@@ -1,0 +1,4 @@
+base_*N1_electrostatic_charge,base_E_HOMO,base_E_LUMO,base_dipole_moment,base_electronegativity,base_hardness,base_molecular_volume,base_molecular_weight,base_ovality,base_surface_area,name
+-0.755,-0.1703,0.0569,5.039158,0.06,0.11,376.47,339.409,1.685,424.9,P2Et
+-0.784,-0.2148,0.0029,1.126227,0.11,0.11,214.2,171.288,1.402,242.78,BTMG
+-0.611,-0.1913,0.0505,2.703408,0.07,0.12,170.58,153.229,1.268,188.57,MTBD

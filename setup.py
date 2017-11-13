@@ -274,12 +274,7 @@ def compare_vibs(coords, vmodes, shared, i, j, varname, R2_min=0.50):
 
 	In its current form, this function also saves a .csv file containing the 
 	correlation matrix for heatmap generation in R.
-	TODO: Handle empty case.
 	"""
-	# coords = extract_coords(molecules)
-	# vmodes = extract_vmodes(molecules)
-	# shared = dict_intersect(coords)
-
 	A_coords = np.array([coords[i][atom] for atom in shared])
 	B_coords = np.array([coords[j][atom] for atom in shared])
 
@@ -343,22 +338,12 @@ def compare_vibs(coords, vmodes, shared, i, j, varname, R2_min=0.50):
 	with open(plotname, 'w') as output_file:
 		writer = csv.writer(output_file, delimiter=',')
 		writer.writerow(col_labels)
-
-
 	return matched_vibs
-
-
-
-
-
-# TODO: filter NMR shift by atom type? (C/H only?)
 		
 def extract_coords(molecules):
 	"""Takes a list of molecule names and returns a list of the atomic 
 	coordinates and atomic weights for each molecule.
 	"""
-	# os.chdir(rxnpredict_path)
-	# spinput_files = glob.glob('spartan_molecules\*.spinput')
 	coords = []
 	for molecule in molecules:
 		fpath = 'spartan_molecules\\' + molecule 
@@ -711,8 +696,6 @@ def export_reactions(plates):
 		dict_writer.writeheader()
 		dict_writer.writerows(toCSV)
 	print('R\output_table.csv has been saved')
-
-
 
 def export_for_pca(plates):
 	"""Takes a list of Plate objects and creates a list of .csv files with the

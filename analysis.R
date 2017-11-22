@@ -757,7 +757,7 @@ rf.pred.LOO <- predict(rfFit.LOO, plate3)
 rf.pred.LOO.rmse <- rmse(rf.pred.LOO, plate3$yield)
 rf.pred.LOO.r2 <- cor(rf.pred.LOO, plate3$yield)
 
-
+# Create calibration plots for additives
 plate3$additive_id <- as.factor(plate3$additive_.C3_NMR_shift)
 levels(plate3$additive_id) <- c('Additive 16', 'Additive 18', 'Additive 20', 'Additive 21', 
                                 'Additive 22', 'Additive 17', 'Additive 19', 'Additive 23')
@@ -774,6 +774,57 @@ p <- ggplot(df, aes(x=rf.pred.LOO, y=yield)) +
     geom_segment(aes(x=0, xend=100, y=0, yend=100), linetype="dashed", size=0.3) +
     theme(legend.position="none")
 ggsave(file="R\\plots\\additive_out_of_sample.png", width=8, height=4.5)
+
+# Calculate RMSE and R^2 for additives 16-23
+additive.16 <- plate3[plate3$additive_id=='Additive 16', ]
+rf.pred.16 <- predict(rfFit.LOO, additive.16)
+rf.pred.16.rmse <- rmse(rf.pred.16, additive.16$yield)
+rf.pred.16.r2 <- cor(rf.pred.16, additive.16$yield)
+
+additive.17 <- plate3[plate3$additive_id=='Additive 17', ]
+rf.pred.17 <- predict(rfFit.LOO, additive.17)
+rf.pred.17.rmse <- rmse(rf.pred.17, additive.17$yield)
+rf.pred.17.r2 <- cor(rf.pred.17, additive.17$yield)
+
+additive.18 <- plate3[plate3$additive_id=='Additive 18', ]
+rf.pred.18 <- predict(rfFit.LOO, additive.18)
+rf.pred.18.rmse <- rmse(rf.pred.18, additive.18$yield)
+rf.pred.18.r2 <- cor(rf.pred.18, additive.18$yield)
+
+additive.19 <- plate3[plate3$additive_id=='Additive 19', ]
+rf.pred.19 <- predict(rfFit.LOO, additive.19)
+rf.pred.19.rmse <- rmse(rf.pred.19, additive.19$yield)
+rf.pred.19.r2 <- cor(rf.pred.19, additive.19$yield)
+
+additive.20 <- plate3[plate3$additive_id=='Additive 20', ]
+rf.pred.20 <- predict(rfFit.LOO, additive.20)
+rf.pred.20.rmse <- rmse(rf.pred.20, additive.20$yield)
+rf.pred.20.r2 <- cor(rf.pred.20, additive.20$yield)
+
+additive.21 <- plate3[plate3$additive_id=='Additive 21', ]
+rf.pred.21 <- predict(rfFit.LOO, additive.21)
+rf.pred.21.rmse <- rmse(rf.pred.21, additive.21$yield)
+rf.pred.21.r2 <- cor(rf.pred.21, additive.21$yield)
+
+additive.22 <- plate3[plate3$additive_id=='Additive 22', ]
+rf.pred.22 <- predict(rfFit.LOO, additive.22)
+rf.pred.22.rmse <- rmse(rf.pred.22, additive.22$yield)
+rf.pred.22.r2 <- cor(rf.pred.22, additive.22$yield)
+
+additive.23 <- plate3[plate3$additive_id=='Additive 23', ]
+rf.pred.23 <- predict(rfFit.LOO, additive.23)
+rf.pred.23.rmse <- rmse(rf.pred.23, additive.23$yield)
+rf.pred.23.r2 <- cor(rf.pred.23, additive.23$yield)
+
+# Print RMSE and R^2 to console
+paste0("Additive 16: RMSE = ", rf.pred.16.rmse, ", R^2 = ", rf.pred.16.r2)
+paste0("Additive 17: RMSE = ", rf.pred.17.rmse, ", R^2 = ", rf.pred.17.r2)
+paste0("Additive 18: RMSE = ", rf.pred.18.rmse, ", R^2 = ", rf.pred.18.r2)
+paste0("Additive 19: RMSE = ", rf.pred.19.rmse, ", R^2 = ", rf.pred.19.r2)
+paste0("Additive 20: RMSE = ", rf.pred.20.rmse, ", R^2 = ", rf.pred.20.r2)
+paste0("Additive 21: RMSE = ", rf.pred.21.rmse, ", R^2 = ", rf.pred.21.r2)
+paste0("Additive 22: RMSE = ", rf.pred.22.rmse, ", R^2 = ", rf.pred.22.r2)
+paste0("Additive 23: RMSE = ", rf.pred.23.rmse, ", R^2 = ", rf.pred.23.r2)
 
 
 
@@ -915,16 +966,18 @@ df <- data.frame(rmse = c(rf.pred2.5.rmse,
 row.names(df) <- c('2.5%', '5%', '10%', '20%', '30%', '50%', '70%')
 
 # Plot RMSE and R^2 data
-rmse.plot <- ggplot(df, aes(y=reorder(rownames(df), rmse), x=rmse)) +
+rmse.plot <- ggplot(df, aes(y=reorder(rownames(df), -rmse), x=rmse)) +
     geom_point() +
     geom_text(label=round(df$rmse, 2), vjust=-1, size=2.5) +
-    labs(x='RMSE', y='') +
-    xlim(0, 20)
-r2.plot <- ggplot(df, aes(y=reorder(rownames(df), rmse), x=r2)) +
+    labs(x='RMSE', y='Training Set Data') +
+    xlim(0, 20) +
+    coord_flip()
+r2.plot <- ggplot(df, aes(y=reorder(rownames(df), -rmse), x=r2)) +
     geom_point() +
     geom_text(label=round(df$r2, 2), vjust=-1, size=2.5) +
-    labs(x='Rsquared', y='') +
-    xlim(0.7, 1)
+    labs(x='Rsquared', y='Training Set Data') +
+    xlim(0.7, 1) +
+    coord_flip()
 plots <- arrangeGrob(r2.plot, rmse.plot, ncol=2)
 ggsave(plots, file="R\\plots\\rf_sparsity_r2_rmse.png", width=6, height=3)
 

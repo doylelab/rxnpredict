@@ -357,6 +357,7 @@ train_control <- trainControl(method="cv", number=10, savePredictions=TRUE)
 # Run to read in previously trained models
 
 lmFit.reduced <- readRDS("rds\\lmFit_reduced.rds")
+lmFit_top5 <- readRDS("rds\\lmFit_top5.rds")
 knnFit <- readRDS("rds\\knnFit.rds")
 svmFit <- readRDS("rds\\svmFit.rds")
 bayesglmFit <- readRDS("rds\\bayesglmFit.rds")
@@ -647,6 +648,46 @@ saveRDS(rfFit, "rds\\rfFit.rds")
 
 
 # ============================================================================
+# Calibration plot for linear model using 5 top RF descriptors
+# ============================================================================
+
+# linear model (top 5 descriptors from final RF model)
+lmFit_top5 <- train(yield ~ additive_.C3_NMR_shift + 
+                   additive_E_LUMO + 
+                   aryl_halide_.C3_NMR_shift +
+                   additive_.O1_electrostatic_charge +
+                   additive_.C5_electrostatic_charge, 
+               data=training.scaled, trControl=train_control, method="lm")
+png(filename="R\\plots\\lm_top5.png", width = 1000, height = 600)
+predVals <- extractPrediction(list(lmFit))
+plotObsVsPred(predVals)
+dev.off()
+saveRDS(lmFit, "rds\\lmFit_top5.rds")
+
+# Predict for testing set
+lm.top5.pred <- predict(lmFit_top5, test.scaled)
+
+# R^2 values
+lm.top5.pred.r2 <- cor(lm.top5.pred, test.scaled$yield)
+
+# RMSE
+lm.top5.pred.rmse <- rmse(lm.top5.pred, test.scaled$yield)
+
+# Create data frames with predicted and observed values for test set
+df1 <- data.frame(x = lm.top5.pred, y = test.scaled$yield)
+
+# Make calibration plot
+p <- ggplot(df1, aes(x = x, y = y)) +
+    geom_point(alpha = 0.3, color="dodgerblue3", size=0.8) + 
+    scale_x_continuous(breaks = seq(-25,100,25), lim=c(-25, 100)) +
+    geom_segment(aes(x=0, xend=100, y=0, yend=100), linetype="dashed", size=0.3) +
+    geom_smooth(method="loess", se=FALSE, size=0.5, color="black") +
+    labs(x='Predicted Yield', y='Observed Yield')
+ggsave(file="R\\plots\\lm_top5_calibration_plot.png", width=5, height=3)
+
+
+
+# ============================================================================
 # RMSE and R^2 plot for different machine learning models
 # ============================================================================
 
@@ -684,15 +725,13 @@ rmse.plot <- ggplot(df, aes(y=reorder(rownames(df), rmse), x=rmse)) +
     geom_text(label=round(df$rmse, 2), vjust=-1, size=3) +
     labs(x='RMSE', y='') +
     xlim(0,20)
-
 r2.plot <- ggplot(df, aes(y=reorder(rownames(df), rmse), x=r2)) +
     geom_point() +
     geom_text(label=round(df$r2, 2), vjust=-1, size=3) +
     labs(x='Rsquared', y='') +
     xlim(0.7,1)
-
 plots <- arrangeGrob(rmse.plot, r2.plot, ncol=2)
-ggsave(plots, file="R\\plots\\ml_models.png", width=8, height=3)
+ggsave(plots, file="R\\plots\\ml_models.png", width=7, height=2.5)
 
 
 
@@ -701,23 +740,81 @@ ggsave(plots, file="R\\plots\\ml_models.png", width=8, height=3)
 # ============================================================================
 
 # Create data frames with predicted and observed values for test set
-df1 <- data.frame(x = knn.pred, y = test.scaled$yield, type = as.factor('kNN'))
-df2 <- data.frame(x = svm.pred, y = test.scaled$yield, type = as.factor('SVM'))
-df3 <- data.frame(x = bayesglm.pred, y = test.scaled$yield, type = as.factor('Bayes GLM'))
-df4 <- data.frame(x = lm.pred, y = test.scaled$yield, type = as.factor('Linear Model'))
+df1 <- data.frame(x = lm.pred, y = test.scaled$yield, type = as.factor('Linear Model'))
+df2 <- data.frame(x = knn.pred, y = test.scaled$yield, type = as.factor('kNN'))
+df3 <- data.frame(x = svm.pred, y = test.scaled$yield, type = as.factor('SVM'))
+df4 <- data.frame(x = bayesglm.pred, y = test.scaled$yield, type = as.factor('Bayes GLM'))
 df5 <- data.frame(x = nnet.pred, y = test.scaled$yield, type = as.factor('Neural Network'))
 df6 <- data.frame(x = rf.pred, y = test.scaled$yield, type = as.factor('Random Forest'))
 
 # Make calibration plots
 facet.df <- do.call(rbind, list(df1, df2, df3, df4, df5, df6)) 
 facet.plot <- ggplot(facet.df, aes(x = x, y = y)) +
-    geom_point(alpha = 0.3, color="dodgerblue3", size=1) + 
+    geom_point(alpha = 0.3, color="dodgerblue3", size=0.8) + 
+    scale_x_continuous(breaks = seq(-25,100,25), lim=c(-25, 100)) +
+    geom_segment(aes(x=0, xend=100, y=0, yend=100), linetype="dashed", size=0.3) +
+    geom_smooth(method="loess", se=FALSE, size=0.5, color="black") +
+    facet_wrap(~type, ncol=3) +
+    labs(x='Predicted Yield', y='Observed Yield')
+ggsave(file="R\\plots\\ml_calibration_plots.png", width=8, height=5)
+
+# Make calibration plots (Supporting Information)
+facet.df <- do.call(rbind, list(df1, df2, df3, df4, df5, df6)) 
+facet.plot <- ggplot(facet.df, aes(x = x, y = y)) +
+    geom_point(alpha = 0.3, color="dodgerblue3", size=0.8) + 
     scale_x_continuous(breaks = seq(-25,100,25), lim=c(-25, 100)) +
     geom_segment(aes(x=0, xend=100, y=0, yend=100), linetype="dashed", size=0.3) +
     geom_smooth(method="loess", se=FALSE, size=0.5, color="black") +
     facet_wrap(~type, ncol=2) +
     labs(x='Predicted Yield', y='Observed Yield')
-ggsave(file="R\\plots\\ml_calibration_plots.png", width=8, height=9)
+ggsave(file="R\\plots\\ml_calibration_plots_SI.png", width=6, height=8)
+
+
+
+# ============================================================================
+# Calculating R^2 and RMSE when non-negative yield predictions -> zeroes
+# ============================================================================
+
+lm.pred[lm.pred<0] <- 0
+svm.pred[svm.pred<0] <- 0
+knn.pred[knn.pred<0] <- 0
+nnet.pred[nnet.pred<0] <- 0
+bayesglm.pred[bayesglm.pred<0] <- 0
+rf.pred[rf.pred<0] <- 0
+
+# R^2 values
+lm.pred.r2 <- cor(lm.pred, test.scaled$yield)
+svm.pred.r2 <- cor(svm.pred, test.scaled$yield)
+knn.pred.r2 <- cor(knn.pred, test.scaled$yield)
+nnet.pred.r2 <- cor(nnet.pred, test.scaled$yield)
+bayesglm.pred.r2 <- cor(bayesglm.pred, test.scaled$yield)
+rf.pred.r2 <- cor(rf.pred, test.scaled$yield)
+
+# RMSE
+lm.pred.rmse <- rmse(lm.pred, test.scaled$yield)
+svm.pred.rmse <- rmse(svm.pred, test.scaled$yield)
+knn.pred.rmse <- rmse(knn.pred, test.scaled$yield)
+nnet.pred.rmse <- rmse(nnet.pred, test.scaled$yield)
+bayesglm.pred.rmse <- rmse(bayesglm.pred, test.scaled$yield)
+rf.pred.rmse <- rmse(rf.pred, test.scaled$yield)
+
+# Plot RMSE and R^2
+df <- data.frame(rmse = c(lm.pred.rmse, svm.pred.rmse, knn.pred.rmse, nnet.pred.rmse, bayesglm.pred.rmse, rf.pred.rmse),
+                 r2 = c(lm.pred.r2, svm.pred.r2, knn.pred.r2, nnet.pred.r2, bayesglm.pred.r2, rf.pred.r2))
+row.names(df) <- c('Linear Model', 'SVM', 'kNN', 'Neural Network', 'Bayes GLM', 'Random Forest')
+
+rmse.plot <- ggplot(df, aes(y=reorder(rownames(df), rmse), x=rmse)) +
+    geom_point() +
+    geom_text(label=round(df$rmse, 2), vjust=-1, size=3) +
+    labs(x='RMSE', y='') +
+    xlim(0,20)
+r2.plot <- ggplot(df, aes(y=reorder(rownames(df), rmse), x=r2)) +
+    geom_point() +
+    geom_text(label=round(df$r2, 2), vjust=-1, size=3) +
+    labs(x='Rsquared', y='') +
+    xlim(0.7,1)
+plots <- arrangeGrob(rmse.plot, r2.plot, ncol=2)
+ggsave(plots, file="R\\plots\\ml_models_nonnegative.png", width=7, height=2.5)
 
 
 
@@ -968,7 +1065,7 @@ row.names(df) <- c('2.5%', '5%', '10%', '20%', '30%', '50%', '70%')
 # Plot RMSE and R^2 data
 rmse.plot <- ggplot(df, aes(y=reorder(rownames(df), -rmse), x=rmse)) +
     geom_point() +
-    geom_text(label=round(df$rmse, 2), vjust=-1, size=2.5) +
+    geom_text(label=round(df$rmse, 1), vjust=-1, size=2.5) +
     labs(x='RMSE', y='Training Set Data') +
     xlim(0, 20) +
     coord_flip()
@@ -979,7 +1076,7 @@ r2.plot <- ggplot(df, aes(y=reorder(rownames(df), -rmse), x=r2)) +
     xlim(0.7, 1) +
     coord_flip()
 plots <- arrangeGrob(r2.plot, rmse.plot, ncol=2)
-ggsave(plots, file="R\\plots\\rf_sparsity_r2_rmse.png", width=6, height=3)
+ggsave(plots, file="R\\plots\\rf_sparsity_r2_rmse.png", width=6, height=2.5)
 
 
 
@@ -1005,13 +1102,21 @@ simpleCap <- function(x) {
 }
 rf.imp.df$descriptor <- sapply(rf.imp.df$descriptor, simpleCap)
 
-# plot variable importance (saves to R\plots\rf_variable_importance.png)
+# plot variable importance (top 10 descriptors)
+p1 <- ggplot(rf.imp.df[rf.imp.df$IncMSE>22, ], aes(x=reorder(descriptor, IncMSE), y=IncMSE)) +
+    geom_bar(stat="identity") +
+    scale_y_continuous(labels = comma) +
+    labs(x="", y="Increase in Mean Squared Error (%)") + 
+    coord_flip()
+ggsave(p1, file="R\\plots\\rf_importance.png", width=6, height=2.25)
+
+# plot variable importance (descriptors above 15% IncMSE) - Supporting Information
 p1 <- ggplot(rf.imp.df[rf.imp.df$IncMSE>15, ], aes(x=reorder(descriptor, IncMSE), y=IncMSE)) +
     geom_bar(stat="identity") +
     scale_y_continuous(labels = comma) +
     labs(x="", y="Increase in Mean Squared Error (%)") + 
     coord_flip()
-ggsave(p1, file="R\\plots\\rf_importance.png", width=6, height=4)
+ggsave(p1, file="R\\plots\\rf_importance_SI.png", width=6, height=4)
 
 
 

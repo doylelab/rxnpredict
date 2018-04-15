@@ -10,7 +10,8 @@ pacman::p_load(gplots,
                randomForest,
                scales,
                arm,
-               corrplot)
+               corrplot,
+               neuralnet)
 
 # Set the working directory to the location of the rxnpredict folder
 setwd("C:\\Users\\Derek\\Dropbox\\rxnpredict")
@@ -362,7 +363,7 @@ knnFit <- readRDS("rds\\knnFit.rds")
 svmFit <- readRDS("rds\\svmFit.rds")
 bayesglmFit <- readRDS("rds\\bayesglmFit.rds")
 lmFit <- readRDS("rds\\lmFit.rds")
-nnetFit <- readRDS("rds\\nnetFit.rds")
+nnetFit.100nodes <- readRDS("rds\\nnetFit_100nodes.rds")
 rfFit <- readRDS("rds\\rfFit.rds")
 rfFit2.5 <- readRDS("rds\\rfFit2_5.rds")
 rfFit5 <- readRDS("rds\\rfFit5.rds")
@@ -438,17 +439,17 @@ rmse8 <- rmse(yhat8, y.test)
 rmse9 <- rmse(yhat9, y.test)
 rmse10 <- rmse(yhat10, y.test)
 
-rsquared0 <- cor(yhat0, y.test)
-rsquared1 <- cor(yhat1, y.test)
-rsquared2 <- cor(yhat2, y.test)
-rsquared3 <- cor(yhat3, y.test)
-rsquared4 <- cor(yhat4, y.test)
-rsquared5 <- cor(yhat5, y.test)
-rsquared6 <- cor(yhat6, y.test)
-rsquared7 <- cor(yhat7, y.test)
-rsquared8 <- cor(yhat8, y.test)
-rsquared9 <- cor(yhat9, y.test)
-rsquared10 <- cor(yhat10, y.test)
+rsquared0 <- cor(yhat0, y.test)**2
+rsquared1 <- cor(yhat1, y.test)**2
+rsquared2 <- cor(yhat2, y.test)**2
+rsquared3 <- cor(yhat3, y.test)**2
+rsquared4 <- cor(yhat4, y.test)**2
+rsquared5 <- cor(yhat5, y.test)**2
+rsquared6 <- cor(yhat6, y.test)**2
+rsquared7 <- cor(yhat7, y.test)**2
+rsquared8 <- cor(yhat8, y.test)**2
+rsquared9 <- cor(yhat9, y.test)**2
+rsquared10 <- cor(yhat10, y.test)**2
 
 mfit1 <- cv.glmnet(x, y, type.measure="mse", alpha=0.01, family="gaussian")
 mfit2 <- cv.glmnet(x, y, type.measure="mse", alpha=0.1, family="gaussian")
@@ -468,11 +469,11 @@ mfit3.rmse <- rmse(mfit3.pred, y.test)
 mfit4.rmse <- rmse(mfit4.pred, y.test)
 mfit5.rmse <- rmse(mfit5.pred, y.test)
 
-mfit1.r2 <- cor(mfit1.pred, y.test)
-mfit2.r2 <- cor(mfit2.pred, y.test)
-mfit3.r2 <- cor(mfit3.pred, y.test)
-mfit4.r2 <- cor(mfit4.pred, y.test)
-mfit5.r2 <- cor(mfit5.pred, y.test)
+mfit1.r2 <- cor(mfit1.pred, y.test)**2
+mfit2.r2 <- cor(mfit2.pred, y.test)**2
+mfit3.r2 <- cor(mfit3.pred, y.test)**2
+mfit4.r2 <- cor(mfit4.pred, y.test)**2
+mfit5.r2 <- cor(mfit5.pred, y.test)**2
 
 # Plot RMSE and R^2 for different values of alpha
 df <- data.frame(alpha = c('0 (LASSO)', '0.01', '0.1', '0.2', '0.5', '1 (Ridge)'),
@@ -489,7 +490,7 @@ r2.plot <- ggplot(df, aes(x=r2, y=alpha)) +
     geom_point() +
     geom_text(label=round(df$r2, 4), vjust=-1, size=3) +
     labs(x='Rsquared', y='alpha') +    
-    xlim(0.8, 0.82)
+    xlim(0.64, 0.68)
 
 plots <- arrangeGrob(rmse.plot, r2.plot, ncol=2)
 ggsave(plots, file="R\\plots\\regularized_models.png", width=8, height=3)
@@ -576,7 +577,7 @@ saveRDS(lmFit.reduced, "rds\\lmFit_reduced.rds")
 
 lmFit.reduced.pred <- predict(lmFit.reduced, test.scaled.reduced)
 lmFit.reduced.rmse <- rmse(lmFit.reduced.pred, test.scaled.reduced$yield)
-lmFit.reduced.r2 <- cor(lmFit.reduced.pred, test.scaled.reduced$yield)
+lmFit.reduced.r2 <- cor(lmFit.reduced.pred, test.scaled.reduced$yield)**2
 
 df <- data.frame(x = lmFit.reduced.pred, 
                  y = test.scaled.reduced$yield,
@@ -627,14 +628,12 @@ plotObsVsPred(predVals)
 dev.off()
 saveRDS(lmFit, "rds\\lmFit.rds")
 
-# neural network
+# neural network (neuralnet package)
+n <- names(training.scaled)
+f <- as.formula(paste("yield ~", paste(n[!n %in% "yield"], collapse = " + ")))
 set.seed(3288)
-nnetFit <- train(yield ~ ., data=training.scaled, trControl=train_control, method="nnet", linout=1)
-png(filename="R\\plots\\nnet.png", width = 1000, height = 600)
-predVals <- extractPrediction(list(nnetFit))
-plotObsVsPred(predVals)
-dev.off()
-saveRDS(nnetFit, "rds\\nnetFit.rds")
+nnetFit.100nodes <- neuralnet(f, data=training.scaled, hidden=c(100), linear.output=TRUE, threshold=1, stepmax=1e7)
+saveRDS(nnetFit.100nodes, "rds\\nnetFit_100nodes.rds")
 
 # random forest 
 set.seed(8915)
@@ -668,7 +667,7 @@ saveRDS(lmFit, "rds\\lmFit_top5.rds")
 lm.top5.pred <- predict(lmFit_top5, test.scaled)
 
 # R^2 values
-lm.top5.pred.r2 <- cor(lm.top5.pred, test.scaled$yield)
+lm.top5.pred.r2 <- cor(lm.top5.pred, test.scaled$yield)**2
 
 # RMSE
 lm.top5.pred.rmse <- rmse(lm.top5.pred, test.scaled$yield)
@@ -695,17 +694,17 @@ ggsave(file="R\\plots\\lm_top5_calibration_plot.png", width=5, height=3)
 lm.pred <- predict(lmFit, test.scaled)
 svm.pred <- predict(svmFit, test.scaled)
 knn.pred <- predict(knnFit, test.scaled)
-nnet.pred <- predict(nnetFit, test.scaled)
+nnet.pred <- compute(nnetFit.100nodes, test.scaled[, 1:120])$net.result
 bayesglm.pred <- predict(bayesglmFit, test.scaled)
 rf.pred <- predict(rfFit, test.scaled)
 
 # R^2 values
-lm.pred.r2 <- cor(lm.pred, test.scaled$yield)
-svm.pred.r2 <- cor(svm.pred, test.scaled$yield)
-knn.pred.r2 <- cor(knn.pred, test.scaled$yield)
-nnet.pred.r2 <- cor(nnet.pred, test.scaled$yield)
-bayesglm.pred.r2 <- cor(bayesglm.pred, test.scaled$yield)
-rf.pred.r2 <- cor(rf.pred, test.scaled$yield)
+lm.pred.r2 <- cor(lm.pred, test.scaled$yield)**2
+svm.pred.r2 <- cor(svm.pred, test.scaled$yield)**2
+knn.pred.r2 <- cor(knn.pred, test.scaled$yield)**2
+nnet.pred.r2 <- cor(nnet.pred, test.scaled$yield)**2
+bayesglm.pred.r2 <- cor(bayesglm.pred, test.scaled$yield)**2
+rf.pred.r2 <- cor(rf.pred, test.scaled$yield)**2
 
 # RMSE
 lm.pred.rmse <- rmse(lm.pred, test.scaled$yield)
@@ -722,14 +721,14 @@ row.names(df) <- c('Linear Model', 'SVM', 'kNN', 'Neural Network', 'Bayes GLM', 
 
 rmse.plot <- ggplot(df, aes(y=reorder(rownames(df), rmse), x=rmse)) +
     geom_point() +
-    geom_text(label=round(df$rmse, 2), vjust=-1, size=3) +
+    geom_text(label=round(df$rmse, 1), vjust=-1, size=3) +
     labs(x='RMSE', y='') +
     xlim(0,20)
 r2.plot <- ggplot(df, aes(y=reorder(rownames(df), rmse), x=r2)) +
     geom_point() +
     geom_text(label=round(df$r2, 2), vjust=-1, size=3) +
     labs(x='Rsquared', y='') +
-    xlim(0.7,1)
+    xlim(0.6,1)
 plots <- arrangeGrob(rmse.plot, r2.plot, ncol=2)
 ggsave(plots, file="R\\plots\\ml_models.png", width=7, height=2.5)
 
@@ -783,12 +782,12 @@ bayesglm.pred[bayesglm.pred<0] <- 0
 rf.pred[rf.pred<0] <- 0
 
 # R^2 values
-lm.pred.r2 <- cor(lm.pred, test.scaled$yield)
-svm.pred.r2 <- cor(svm.pred, test.scaled$yield)
-knn.pred.r2 <- cor(knn.pred, test.scaled$yield)
-nnet.pred.r2 <- cor(nnet.pred, test.scaled$yield)
-bayesglm.pred.r2 <- cor(bayesglm.pred, test.scaled$yield)
-rf.pred.r2 <- cor(rf.pred, test.scaled$yield)
+lm.pred.r2 <- cor(lm.pred, test.scaled$yield)**2
+svm.pred.r2 <- cor(svm.pred, test.scaled$yield)**2
+knn.pred.r2 <- cor(knn.pred, test.scaled$yield)**2
+nnet.pred.r2 <- cor(nnet.pred, test.scaled$yield)**2
+bayesglm.pred.r2 <- cor(bayesglm.pred, test.scaled$yield)**2
+rf.pred.r2 <- cor(rf.pred, test.scaled$yield)**2
 
 # RMSE
 lm.pred.rmse <- rmse(lm.pred, test.scaled$yield)
@@ -805,14 +804,14 @@ row.names(df) <- c('Linear Model', 'SVM', 'kNN', 'Neural Network', 'Bayes GLM', 
 
 rmse.plot <- ggplot(df, aes(y=reorder(rownames(df), rmse), x=rmse)) +
     geom_point() +
-    geom_text(label=round(df$rmse, 2), vjust=-1, size=3) +
+    geom_text(label=round(df$rmse, 1), vjust=-1, size=3) +
     labs(x='RMSE', y='') +
     xlim(0,20)
 r2.plot <- ggplot(df, aes(y=reorder(rownames(df), rmse), x=r2)) +
     geom_point() +
     geom_text(label=round(df$r2, 2), vjust=-1, size=3) +
     labs(x='Rsquared', y='') +
-    xlim(0.7,1)
+    xlim(0.6,1)
 plots <- arrangeGrob(rmse.plot, r2.plot, ncol=2)
 ggsave(plots, file="R\\plots\\ml_models_nonnegative.png", width=7, height=2.5)
 
@@ -848,11 +847,11 @@ saveRDS(rfFit.LOO, "rds\\rfFit_LOO.rds")
 
 rf.predTrain.LOO <- predict(rfFit.LOO, plate12)
 rf.predTrain.LOO.rmse <- rmse(rf.predTrain.LOO, plate12$yield)
-rf.predTrain.LOO.r2 <- cor(rf.predTrain.LOO, plate12$yield)
+rf.predTrain.LOO.r2 <- cor(rf.predTrain.LOO, plate12$yield)**2
 
 rf.pred.LOO <- predict(rfFit.LOO, plate3)
 rf.pred.LOO.rmse <- rmse(rf.pred.LOO, plate3$yield)
-rf.pred.LOO.r2 <- cor(rf.pred.LOO, plate3$yield)
+rf.pred.LOO.r2 <- cor(rf.pred.LOO, plate3$yield)**2
 
 # Create calibration plots for additives
 plate3$additive_id <- as.factor(plate3$additive_.C3_NMR_shift)
@@ -876,42 +875,42 @@ ggsave(file="R\\plots\\additive_out_of_sample.png", width=8, height=4.5)
 additive.16 <- plate3[plate3$additive_id=='Additive 16', ]
 rf.pred.16 <- predict(rfFit.LOO, additive.16)
 rf.pred.16.rmse <- rmse(rf.pred.16, additive.16$yield)
-rf.pred.16.r2 <- cor(rf.pred.16, additive.16$yield)
+rf.pred.16.r2 <- cor(rf.pred.16, additive.16$yield)**2
 
 additive.17 <- plate3[plate3$additive_id=='Additive 17', ]
 rf.pred.17 <- predict(rfFit.LOO, additive.17)
 rf.pred.17.rmse <- rmse(rf.pred.17, additive.17$yield)
-rf.pred.17.r2 <- cor(rf.pred.17, additive.17$yield)
+rf.pred.17.r2 <- cor(rf.pred.17, additive.17$yield)**2
 
 additive.18 <- plate3[plate3$additive_id=='Additive 18', ]
 rf.pred.18 <- predict(rfFit.LOO, additive.18)
 rf.pred.18.rmse <- rmse(rf.pred.18, additive.18$yield)
-rf.pred.18.r2 <- cor(rf.pred.18, additive.18$yield)
+rf.pred.18.r2 <- cor(rf.pred.18, additive.18$yield)**2
 
 additive.19 <- plate3[plate3$additive_id=='Additive 19', ]
 rf.pred.19 <- predict(rfFit.LOO, additive.19)
 rf.pred.19.rmse <- rmse(rf.pred.19, additive.19$yield)
-rf.pred.19.r2 <- cor(rf.pred.19, additive.19$yield)
+rf.pred.19.r2 <- cor(rf.pred.19, additive.19$yield)**2
 
 additive.20 <- plate3[plate3$additive_id=='Additive 20', ]
 rf.pred.20 <- predict(rfFit.LOO, additive.20)
 rf.pred.20.rmse <- rmse(rf.pred.20, additive.20$yield)
-rf.pred.20.r2 <- cor(rf.pred.20, additive.20$yield)
+rf.pred.20.r2 <- cor(rf.pred.20, additive.20$yield)**2
 
 additive.21 <- plate3[plate3$additive_id=='Additive 21', ]
 rf.pred.21 <- predict(rfFit.LOO, additive.21)
 rf.pred.21.rmse <- rmse(rf.pred.21, additive.21$yield)
-rf.pred.21.r2 <- cor(rf.pred.21, additive.21$yield)
+rf.pred.21.r2 <- cor(rf.pred.21, additive.21$yield)**2
 
 additive.22 <- plate3[plate3$additive_id=='Additive 22', ]
 rf.pred.22 <- predict(rfFit.LOO, additive.22)
 rf.pred.22.rmse <- rmse(rf.pred.22, additive.22$yield)
-rf.pred.22.r2 <- cor(rf.pred.22, additive.22$yield)
+rf.pred.22.r2 <- cor(rf.pred.22, additive.22$yield)**2
 
 additive.23 <- plate3[plate3$additive_id=='Additive 23', ]
 rf.pred.23 <- predict(rfFit.LOO, additive.23)
 rf.pred.23.rmse <- rmse(rf.pred.23, additive.23$yield)
-rf.pred.23.r2 <- cor(rf.pred.23, additive.23$yield)
+rf.pred.23.r2 <- cor(rf.pred.23, additive.23$yield)**2
 
 # Print RMSE and R^2 to console
 paste0("Additive 16: RMSE = ", rf.pred.16.rmse, ", R^2 = ", rf.pred.16.r2)
@@ -1024,15 +1023,15 @@ ggsave(file="R\\plots\\rf_sparsity.png", width=8, height=9)
 # ============================================================================
 
 # R^2 values
-rf.pred2.5.r2 <- cor(rf.pred2.5, test.scaled$yield)
-rf.pred5.r2 <- cor(rf.pred5, test.scaled$yield)
-rf.pred10.r2 <- cor(rf.pred10, test.scaled$yield)
-rf.pred20.r2 <- cor(rf.pred20, test.scaled$yield)
-rf.pred30.r2 <- cor(rf.pred30, test.scaled$yield)
-rf.pred40.r2 <- cor(rf.pred40, test.scaled$yield)
-rf.pred50.r2 <- cor(rf.pred50, test.scaled$yield)
-rf.pred60.r2 <- cor(rf.pred60, test.scaled$yield)
-rf.pred70.r2 <- cor(rf.pred70, test.scaled$yield)
+rf.pred2.5.r2 <- cor(rf.pred2.5, test.scaled$yield)**2
+rf.pred5.r2 <- cor(rf.pred5, test.scaled$yield)**2
+rf.pred10.r2 <- cor(rf.pred10, test.scaled$yield)**2
+rf.pred20.r2 <- cor(rf.pred20, test.scaled$yield)**2
+rf.pred30.r2 <- cor(rf.pred30, test.scaled$yield)**2
+rf.pred40.r2 <- cor(rf.pred40, test.scaled$yield)**2
+rf.pred50.r2 <- cor(rf.pred50, test.scaled$yield)**2
+rf.pred60.r2 <- cor(rf.pred60, test.scaled$yield)**2
+rf.pred70.r2 <- cor(rf.pred70, test.scaled$yield)**2
 
 # RMSE
 rf.pred2.5.rmse <- rmse(rf.pred2.5, test.scaled$yield)
@@ -1073,7 +1072,7 @@ r2.plot <- ggplot(df, aes(y=reorder(rownames(df), -rmse), x=r2)) +
     geom_point() +
     geom_text(label=round(df$r2, 2), vjust=-1, size=2.5) +
     labs(x='Rsquared', y='Training Set Data') +
-    xlim(0.7, 1) +
+    xlim(0.5, 1) +
     coord_flip()
 plots <- arrangeGrob(r2.plot, rmse.plot, ncol=2)
 ggsave(plots, file="R\\plots\\rf_sparsity_r2_rmse.png", width=6, height=2.5)
@@ -1139,7 +1138,7 @@ p2 <- ggplot(output.scaled, aes(x = additive_.C3_NMR_shift, y = yield)) +
 ggsave(file="R\\plots\\C3_vs_yield_lm.png", width=5, height=4)
 
 # calculate R^2 value between *C3 NMR shift and yield; display in console
-C3.yield.cor <- cor(output.scaled$additive_.C3_NMR_shift, output.scaled$yield)
+C3.yield.cor <- cor(output.scaled$additive_.C3_NMR_shift, output.scaled$yield)**2
 paste0("R^2 value between *C3 NMR Shift and Yield = ", C3.yield.cor)
 
 
@@ -1155,7 +1154,7 @@ saveRDS(rfFit.ArCl, "rds\\rfFit_ArCl.rds")
 
 # Test on ArCl
 ClfromCl <- predict(rfFit.ArCl, ArCl.test)
-ClfromCl.r2 <- cor(ClfromCl, ArCl.test$yield)
+ClfromCl.r2 <- cor(ClfromCl, ArCl.test$yield)**2
 ClfromCl.rmse <- rmse(ClfromCl, ArCl.test$yield)
 df1 <- data.frame(x = ClfromCl, 
                   y = ArCl.test$yield)
@@ -1176,7 +1175,7 @@ saveRDS(rfFit.ArBr, "rds\\rfFit_ArBr.rds")
 
 # Test on ArBr
 BrfromBr <- predict(rfFit.ArBr, ArBr.test)
-BrfromBr.r2 <- cor(BrfromBr, ArBr.test$yield)
+BrfromBr.r2 <- cor(BrfromBr, ArBr.test$yield)**2
 BrfromBr.rmse <- rmse(BrfromBr, ArBr.test$yield)
 df2 <- data.frame(x = BrfromBr, 
                   y = ArBr.test$yield)
@@ -1197,7 +1196,7 @@ saveRDS(rfFit.ArI, "rds\\rfFit_ArI.rds")
 
 # Test on ArI
 IfromI <- predict(rfFit.ArI, ArI.test)
-IfromI.r2 <- cor(IfromI, ArI.test$yield)
+IfromI.r2 <- cor(IfromI, ArI.test$yield)**2
 IfromI.rmse <- rmse(IfromI, ArI.test$yield)
 df3 <- data.frame(x = IfromI, 
                   y = ArI.test$yield)
@@ -1213,15 +1212,15 @@ ggsave(file="R\\plots\\IfromI.png", width=5, height=4)
 
 # Calculate R^2 and RMSE
 rf.pred.ArCl <- predict(rfFit.ArCl, ArCl.test)
-rf.pred.ArCl.r2 <- cor(rf.pred.ArCl, ArCl.test$yield)
+rf.pred.ArCl.r2 <- cor(rf.pred.ArCl, ArCl.test$yield)**2
 rf.pred.ArCl.rmse <- rmse(rf.pred.ArCl, ArCl.test$yield)
 
 rf.pred.ArBr <- predict(rfFit.ArBr, ArBr.test)
-rf.pred.ArBr.r2 <- cor(rf.pred.ArBr, ArBr.test$yield)
+rf.pred.ArBr.r2 <- cor(rf.pred.ArBr, ArBr.test$yield)**2
 rf.pred.ArBr.rmse <- rmse(rf.pred.ArBr, ArBr.test$yield)
 
 rf.pred.ArI <- predict(rfFit.ArI, ArI.test)
-rf.pred.ArI.r2 <- cor(rf.pred.ArI, ArI.test$yield)
+rf.pred.ArI.r2 <- cor(rf.pred.ArI, ArI.test$yield)**2
 rf.pred.ArI.rmse <- rmse(rf.pred.ArI, ArI.test$yield)
 
 # Pretty plot RMSE and Rsquared
@@ -1233,13 +1232,13 @@ rmse.plot <- ggplot(df, aes(y=rownames(df), x=rmse)) +
     geom_point() +
     geom_text(label=round(df$rmse, 2), vjust=-1, size=3) +
     labs(x='RMSE', y='') +
-    xlim(0,20)
+    xlim(0, 20)
 
 r2.plot <- ggplot(df, aes(y=rownames(df), x=r2)) +
     geom_point() +
     geom_text(label=round(df$r2, 2), vjust=-1, size=3) +
     labs(x='Rsquared', y='') +
-    xlim(0.7,1)
+    xlim(0.7, 1)
 
 plots <- arrangeGrob(rmse.plot, r2.plot, ncol=2)
 ggsave(plots, file="R\\plots\\rf_aryl_halides.png", width=6, height=2)
@@ -1257,7 +1256,7 @@ saveRDS(rfFit.ArBr.all, "rds\\rfFit_ArBr_all.rds")
 
 # Test on ArCl
 ClfromBr <- predict(rfFit.ArBr.all, ArCl.scaled)
-ClfromBr.r2 <- cor(ClfromBr, ArCl.scaled$yield)
+ClfromBr.r2 <- cor(ClfromBr, ArCl.scaled$yield)**2
 ClfromBr.rmse <- rmse(ClfromBr, ArCl.scaled$yield)
 df1 <- data.frame(x = ClfromBr, 
                   y = ArCl.scaled$yield)
@@ -1273,7 +1272,7 @@ ggsave(file="R\\plots\\ClfromBr.png", width=5, height=4)
 
 # Test on ArI
 IfromBr <- predict(rfFit.ArBr.all, ArI.scaled)
-IfromBr.r2 <- cor(IfromBr, ArI.scaled$yield)
+IfromBr.r2 <- cor(IfromBr, ArI.scaled$yield)**2
 IfromBr.rmse <- rmse(IfromBr, ArI.scaled$yield)
 df2 <- data.frame(x = IfromBr, 
                   y = ArI.scaled$yield)
@@ -1304,7 +1303,7 @@ saveRDS(rfFit.nonpyridyl, "rds\\rfFit_nonpyridyl.rds")
 
 # Test on pyridyl
 pyridyl.pred <- predict(rfFit.nonpyridyl, pyridyl.scaled)
-pyridyl.r2 <- cor(pyridyl.pred, pyridyl.scaled$yield)
+pyridyl.r2 <- cor(pyridyl.pred, pyridyl.scaled$yield)**2
 pyridyl.rmse <- rmse(pyridyl.pred, pyridyl.scaled$yield)
 
 df1 <- data.frame(x = pyridyl.pred, 
@@ -1330,7 +1329,7 @@ saveRDS(rfFit.under80, "rds\\rfFit_under80.rds")
 
 # Predict yields for reactions > 80%
 over80pred <- predict(rfFit.under80, output.over80)
-over80pred.r2 <- cor(over80pred, output.over80$yield)
+over80pred.r2 <- cor(over80pred, output.over80$yield)**2
 over80pred.rmse <- rmse(over80pred, output.over80$yield)
 
 # Generate calibration plot

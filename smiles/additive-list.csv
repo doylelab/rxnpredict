@@ -5,6 +5,7 @@ component,name,Additive_SMILES
 4,ethyl-3-methylisoxazole-5-carboxylate,CCOC(=O)c1onc(C)c1
 5,3-methylisoxazole,Cc1ccon1
 6,ethyl-5-methylisoxazole-3-carboxylate,CCOC(=O)c1cc(C)on1
+7,"5-Phenyl-1,2,4-oxadiazole",c1ccc(-c2ncno2)cc1
 8,5-methylisoxazole,Cc1oncc1
 9,ethyl-isoxazole-3-carboxylate,CCOC(=O)c1ccon1
 10,benzo[c]isoxazole,o1cc2ccccc2n1

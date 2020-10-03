@@ -23,6 +23,8 @@ import collections
 import dataclasses
 
 import pandas as pd
+from rdkit import Chem
+from rdkit.Chem import AllChem
 
 
 def location_to_row_col(location, block, plate):
@@ -104,6 +106,7 @@ def read_compound_data():
             * ligand
             * ligand_cas_number
             * ligand_smiles
+            * product_smiles
     """
     rows = pd.read_csv('layout/Table_S1.csv')
     cols = pd.read_csv('layout/Table_S2.csv')
@@ -140,7 +143,10 @@ def read_compound_data():
                     record['aryl_halide'] = aryl_halide.name
                     record['aryl_halide_smiles'] = aryl_halide.smiles
                 data.append(record)
-    return pd.DataFrame(data)
+    df = pd.DataFrame(data)
+    df['product_smiles'] = df.aryl_halide_smiles.map(get_product_smiles,
+                                                     na_action='ignore')
+    return df
 
 
 @dataclasses.dataclass
@@ -171,6 +177,25 @@ def read_compounds():
         data['ligand'][row.name] = CompoundInfo(
             name=row.name, smiles=row.Ligand_SMILES, cas_number=row.CAS)
     return data
+
+
+def get_product_smiles(aryl_halide):
+    """Adds product SMILES to the DataFrame.
+
+    Copied from https://github.com/Open-Reaction-Database/ord-schema/pull/88.
+
+    Args:
+        aryl_halide: Text aryl halide SMILES.
+
+    Returns:
+         Product SMILES.
+    """
+    replacement = Chem.MolFromSmiles('NC1=CC=C(C)C=C1')
+    query = Chem.MolFromSmarts('[Cl,Br,I]')
+    molecule = Chem.MolFromSmiles(aryl_halide)
+    products = AllChem.ReplaceSubstructs(molecule, query, replacement)
+    assert len(products) == 1
+    return Chem.MolToSmiles(products[0])
 
 
 def main():
